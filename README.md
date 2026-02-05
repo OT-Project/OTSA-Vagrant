@@ -7,7 +7,7 @@ Requirements
 * A system capable of running VirtualBox
 * [Vagrant](https://www.vagrantup.com) >= 2.3.4
 * [VirtualBox](https://www.virtualbox.org) >= 7.0.4
-* [Libvirt]() >= 
+* [Libvirt](https://libvirt.org/index.html) >= 10.0.0
 
 Networking considerations
 -------------------------
