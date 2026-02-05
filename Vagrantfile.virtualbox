@@ -5,13 +5,13 @@ Vagrant.configure(2) do |config|
   #
 
   $opnsense_release = '26.1'                    # Which OPNsense release to install
-  $virtual_machine_ip = '192.168.55.55'
+  $virtual_machine_ip = '192.168.56.56'
   $vagrant_mount_path = '/var/vagrant'          # Shared path for development environment
 
   #
-  # Box configuration - using local box file
+  # Box configuration
   #
-  config.vm.box = 'BKCS-OT/FreeBSD-14.3'
+  config.vm.box = "BKCS-OT/FreeBSD-14.3"
 
   config.vm.synced_folder '.', '/vagrant', id: 'vagrant-root', disabled: true
   config.vm.synced_folder '.', "#{$vagrant_mount_path}", type: 'rsync', rsync__exclude: ['.git/', '.vagrant/']
@@ -25,23 +25,17 @@ Vagrant.configure(2) do |config|
   config.vm.network 'private_network', ip: $virtual_machine_ip, auto_config: false
 
   #
-  # Libvirt provider configuration
+  # VirtualBox provider configuration
   #
-  config.vm.provider :libvirt do |lv|
-    lv.memory = 8192
-    lv.cpus = 16
-    lv.disk_bus = 'virtio'
-    lv.nic_model_type = 'virtio'
-    lv.machine_virtual_size = 64  # Disk size in GB
+  config.vm.provider :virtualbox do |vb|
+    vb.memory = 8192
+    vb.cpus = 16
+    vb.customize ['modifyvm', :id, '--nictype1', 'virtio']
+    vb.customize ['modifyvm', :id, '--nictype2', 'virtio']
     
-    # Important: Increase wait timeout for IP address detection
-    lv.mgmt_attach = true
-    lv.management_network_name = 'vagrant-libvirt'
-    lv.management_network_address = '192.168.121.0/24'
-    lv.management_network_mode = 'nat'
-    
-    # Increase connection timeout
-    lv.connect_via_ssh = false
+    # Disk size (requires vagrant-disksize plugin)
+    # vagrant plugin install vagrant-disksize
+    # config.disksize.size = '64GB'
   end
 
   #
@@ -68,8 +62,9 @@ Vagrant.configure(2) do |config|
     # Start bootstrap
     env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh -r #{$opnsense_release} -y
 
-    # Set correct interface names for libvirt/virtio
-    # libvirt uses vtnet0 (management), vtnet1 (LAN)
+    # Set correct interface names for VirtualBox with virtio
+    # VirtualBox with virtio uses vtnet0 (NAT/WAN), vtnet1 (LAN)
+    # If using default E1000 adapter, interfaces would be em0, em1
     sed -i '' -e 's/mismatch0/vtnet1/' /usr/local/etc/config.xml
     sed -i '' -e 's/mismatch1/vtnet0/' /usr/local/etc/config.xml
 
@@ -115,6 +110,11 @@ Vagrant.configure(2) do |config|
 
     # Change sudoers file to reference user instead of group
     sed -i '' -e 's/^%//' /usr/local/etc/sudoers.d/vagrant
+
+    # Fix sudoers ownership (prevent permission issues)
+    chown root:wheel /usr/local/etc/sudoers
+    chown -R root:wheel /usr/local/etc/sudoers.d
+    chmod 440 /usr/local/etc/sudoers
 
     # Display helpful message for the user
     echo '#####################################################'
