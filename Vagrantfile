@@ -21,8 +21,8 @@ Vagrant.configure(2) do |config|
   $vagrant_mount_path = '/var/vagrant'          # Shared path for development environment
   $repo_base_url = ENV.fetch('REPO_BASE_URL', 'https://repo.kamiyuri.dev')  # Custom package repository
   $core_repository = ENV.fetch('CORE_REPOSITORY', 'OT-SA-Core') # GitHub repository name for Core code
-  $core_branch = ENV.fetch('CORE_BRANCH', 'main') # Branch to pull down for Core code
-  $opnsense_pin_version = ENV.fetch('OPNSENSE_PIN_VERSION', '') # Lock to a specific version instead of updating
+  $core_branch = ENV.fetch('CORE_BRANCH', 'dev') # Branch to pull down for Core code
+  $opnsense_pin_version = ENV.fetch('OPNSENSE_PIN_VERSION', '26.1') # Lock to a specific version instead of updating
 
   #
   # Box configuration - using local box file
