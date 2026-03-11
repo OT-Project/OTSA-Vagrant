@@ -1,3 +1,13 @@
+# Repository URL to clone OT-SA-Core from (can be overridden via environment variable)
+$core_clone_url = ENV.fetch('CORE_CLONE_URL', 'https://github.com/OT-Project/OT-Security-Appliance.git')
+
+# Auto-clone OT-SA-Core repository if it doesn't exist on the host
+core_dir = File.expand_path('../OT-SA-Core', __dir__)
+unless File.directory?(core_dir)
+  puts "==> OT-SA-Core directory not found at #{core_dir}. Cloning from #{$core_clone_url}..."
+  system("git clone #{$core_clone_url} #{core_dir}")
+end
+
 Vagrant.configure(2) do |config|
 
   #
@@ -17,6 +27,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.synced_folder '.', '/vagrant', id: 'vagrant-root', disabled: true
   config.vm.synced_folder '.', "#{$vagrant_mount_path}", type: 'nfs', nfs_udp: false
+  config.vm.synced_folder '../OT-SA-Core', '/usr/core', type: 'nfs', nfs_udp: false
 
   config.ssh.shell = '/bin/sh'
   config.ssh.keep_alive = true

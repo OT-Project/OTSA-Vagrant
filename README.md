@@ -61,6 +61,7 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | `$opnsense_release` | The target OPNsense version. | `26.1` |
 | `$virtual_machine_ip` | The fixed IP address assigned to the LAN interface. | `192.168.56.56` |
 | `$repo_base_url` | Base URL used to resolve the custom package mirror. | `https://repo.kamiyuri.dev` |
+| `$core_clone_url` | Explicit URL to clone the `OT-SA-Core` repository if not presented in the host. | `https://github.com/OT-Project/OT-Security-Appliance.git` |
 | `$core_fetch_url` | Explicit URL to an archive of the OPNsense core code (optional). | `https://github.com/OT-Project/OT-Security-Appliance/archive/refs/tags/26.1.tar.gz` |
 | `$vagrant_mount_path` | Absolute path inside the VM mapped to the host directory. | `/var/vagrant` |
 
@@ -111,6 +112,8 @@ Root-level access (`sudo`) via the `vagrant` user requires no password prompt by
 
 ### Development Workflow
 The root of this project folder is actively mirrored into the OPNsense VM at `/var/vagrant`. This allows developers to edit scripts, repositories, and configurations comfortably on their host machine and instantly evaluate changes inside the VM's active environment.
+
+Additionally, if an adjacent `../OT-SA-Core` repository directory does not exist on the host, the `Vagrantfile` will automatically clone it over via `$core_clone_url` (which can be overridden with the `CORE_CLONE_URL` environment variable). The system then sets up an NFS synced folder bridging `../OT-SA-Core` to `/usr/core` within the VM, ensuring seamless cross-environment software development.
 
 ## Troubleshooting & Maintenance
 
