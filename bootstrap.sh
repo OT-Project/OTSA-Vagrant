@@ -13,12 +13,14 @@ sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
 #   -m <url>           = use custom package mirror + add otsa repo
 #   -r <release>       = target OPNsense release
 OPTS="-y"
+if [ -n "${REPO_BASE_URL}" ]; then
+  OPTS="${OPTS} -m ${REPO_BASE_URL}"
+fi
 
 env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh \
   -A OT-Project \
   -R ${CORE_REPOSITORY:-OT-SA-Core} \
   -B ${CORE_BRANCH:-main} \
-  -m ${REPO_BASE_URL} \
   -r ${OPNSENSE_RELEASE} \
   ${OPTS}
 
