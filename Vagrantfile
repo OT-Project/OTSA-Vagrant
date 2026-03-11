@@ -22,9 +22,8 @@ Vagrant.configure(2) do |config|
 
   config.vm.boot_timeout = 6000
 
-  # Configure private network - this creates the LAN interface
+  # Configure private networks - LAN (static), OPT1 (dhcp), OPT2 (dhcp)
   config.vm.network 'private_network', ip: $virtual_machine_ip, auto_config: false
-  config.vm.network "private_network", type: "dhcp"
   config.vm.network "private_network", type: "dhcp"
   config.vm.network "private_network", type: "dhcp"
 
@@ -50,6 +49,8 @@ Vagrant.configure(2) do |config|
     vb.cpus = 16
     vb.customize ['modifyvm', :id, '--nictype1', 'virtio']
     vb.customize ['modifyvm', :id, '--nictype2', 'virtio']
+    vb.customize ['modifyvm', :id, '--nictype3', 'virtio']
+    vb.customize ['modifyvm', :id, '--nictype4', 'virtio']
     
     # Disk size (requires vagrant-disksize plugin)
     # vagrant plugin install vagrant-disksize
