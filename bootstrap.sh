@@ -73,7 +73,7 @@ sed -i '' -e '/<\/member>/r files/admins.xml' /usr/local/etc/config.xml
 sed -i '' -e '/<\/user>/r files/vagrant.xml' /usr/local/etc/config.xml
 
 # Change home directory to group nobody
-chgrp -R nobody /usr/home/vagrant
+# chgrp -R nobody /usr/home/vagrant
 
 # Change sudoers file to reference user instead of group
 sed -i '' -e 's/^%//' /usr/local/etc/sudoers.d/vagrant
