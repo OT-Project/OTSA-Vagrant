@@ -22,7 +22,7 @@ Vagrant.configure(2) do |config|
   $repo_base_url = ENV.fetch('REPO_BASE_URL', 'https://repo.kamiyuri.dev')  # Custom package repository
   $core_repository = ENV.fetch('CORE_REPOSITORY', 'OT-SA-Core') # GitHub repository name for Core code
   $core_branch = ENV.fetch('CORE_BRANCH', 'main') # Branch to pull down for Core code
-  $opnsense_skip_update = ENV.fetch('OPNSENSE_SKIP_UPDATE', 'false') # Whether to skip automatic opnsense-update
+  $opnsense_pin_version = ENV.fetch('OPNSENSE_PIN_VERSION', '') # Lock to a specific version instead of updating
 
   #
   # Box configuration - using local box file
@@ -94,6 +94,6 @@ Vagrant.configure(2) do |config|
     "VIRTUAL_MACHINE_IP" => $virtual_machine_ip,
     "CORE_REPOSITORY" => $core_repository,
     "CORE_BRANCH" => $core_branch,
-    "OPNSENSE_SKIP_UPDATE" => $opnsense_skip_update
+    "OPNSENSE_PIN_VERSION" => $opnsense_pin_version
   }, path: "bootstrap.sh"
 end
