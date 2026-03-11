@@ -8,6 +8,7 @@ Vagrant.configure(2) do |config|
   $virtual_machine_ip = '192.168.56.56'
   $vagrant_mount_path = '/var/vagrant'          # Shared path for development environment
   $repo_base_url = 'https://repo.kamiyuri.dev'  # Custom package repository
+  $core_fetch_url = 'https://github.com/OT-Project/OT-Security-Appliance/archive/refs/tags/26.1.tar.gz' # Custom code download URL (optional)
 
   #
   # Box configuration - using local box file
@@ -75,6 +76,7 @@ Vagrant.configure(2) do |config|
   config.vm.provision "shell", env: {
     "REPO_BASE_URL" => $repo_base_url,
     "OPNSENSE_RELEASE" => $opnsense_release,
-    "VIRTUAL_MACHINE_IP" => $virtual_machine_ip
+    "VIRTUAL_MACHINE_IP" => $virtual_machine_ip,
+    "CORE_FETCH_URL" => $core_fetch_url
   }, path: "bootstrap.sh"
 end

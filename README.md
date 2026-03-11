@@ -61,6 +61,7 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | `$opnsense_release` | The target OPNsense version. | `26.1` |
 | `$virtual_machine_ip` | The fixed IP address assigned to the LAN interface. | `192.168.56.56` |
 | `$repo_base_url` | Base URL used to resolve the custom package mirror. | `https://repo.kamiyuri.dev` |
+| `$core_fetch_url` | Explicit URL to an archive of the OPNsense core code (optional). | `https://github.com/OT-Project/OT-Security-Appliance/archive/refs/tags/26.1.tar.gz` |
 | `$vagrant_mount_path` | Absolute path inside the VM mapped to the host directory. | `/var/vagrant` |
 
 ### Network Topology

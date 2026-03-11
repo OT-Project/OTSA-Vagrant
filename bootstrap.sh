@@ -12,13 +12,18 @@ sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
 #   -B dev             = use 'dev' branch instead of stable/<release>
 #   -m <url>           = use custom package mirror + add otsa repo
 #   -r <release>       = target OPNsense release
+OPTS="-y"
+if [ -n "${CORE_FETCH_URL}" ]; then
+  OPTS="${OPTS} -U ${CORE_FETCH_URL}"
+fi
+
 env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh \
   -A OT-Project \
   -R OT-Security-Appliance \
   -B dev \
   -m ${REPO_BASE_URL} \
   -r ${OPNSENSE_RELEASE} \
-  -y
+  ${OPTS}
 
 # =============================================
 # Configure network interfaces
