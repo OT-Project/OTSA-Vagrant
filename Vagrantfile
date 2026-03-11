@@ -19,9 +19,10 @@ Vagrant.configure(2) do |config|
   $opnsense_release = '26.1'                    # Which OPNsense release to install
   $virtual_machine_ip = '192.168.56.56'
   $vagrant_mount_path = '/var/vagrant'          # Shared path for development environment
-  $repo_base_url = ENV.fetch('REPO_BASE_URL', '')  # Custom package repository
+  $repo_base_url = ENV.fetch('REPO_BASE_URL', 'https://repo.kamiyuri.dev')  # Custom package repository
   $core_repository = ENV.fetch('CORE_REPOSITORY', 'OT-SA-Core') # GitHub repository name for Core code
   $core_branch = ENV.fetch('CORE_BRANCH', 'main') # Branch to pull down for Core code
+  $opnsense_skip_update = ENV.fetch('OPNSENSE_SKIP_UPDATE', 'false') # Whether to skip automatic opnsense-update
 
   #
   # Box configuration - using local box file
@@ -92,6 +93,7 @@ Vagrant.configure(2) do |config|
     "OPNSENSE_RELEASE" => $opnsense_release,
     "VIRTUAL_MACHINE_IP" => $virtual_machine_ip,
     "CORE_REPOSITORY" => $core_repository,
-    "CORE_BRANCH" => $core_branch
+    "CORE_BRANCH" => $core_branch,
+    "OPNSENSE_SKIP_UPDATE" => $opnsense_skip_update
   }, path: "bootstrap.sh"
 end

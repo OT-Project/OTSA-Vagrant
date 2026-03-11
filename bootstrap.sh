@@ -16,6 +16,9 @@ OPTS="-y"
 if [ -n "${REPO_BASE_URL}" ]; then
   OPTS="${OPTS} -m ${REPO_BASE_URL}"
 fi
+if [ "${OPNSENSE_SKIP_UPDATE}" = "true" ]; then
+  OPTS="${OPTS} -x"
+fi
 
 env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh \
   -A OT-Project \
