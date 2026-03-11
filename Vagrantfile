@@ -3,8 +3,10 @@ $core_clone_url = ENV.fetch('CORE_CLONE_URL', 'https://github.com/OT-Project/OT-
 
 # Auto-clone OT-SA-Core repository if it doesn't exist on the host
 core_dir = File.expand_path('../OT-SA-Core', __dir__)
-unless File.directory?(core_dir)
-  puts "==> OT-SA-Core directory not found at #{core_dir}. Cloning from #{$core_clone_url}..."
+if File.directory?(core_dir)
+  puts "==> Found existing OT-SA-Core repository at #{core_dir}"
+else
+  puts "==> OT-SA-Core directory not found. Cloning from #{$core_clone_url} to #{core_dir}..."
   system("git clone #{$core_clone_url} #{core_dir}")
 end
 
