@@ -25,7 +25,7 @@ The primary goal of this Vagrant environment is to abstract away the complexity 
 This environment utilizes a layered deployment architecture:
 1. **Base OS:** Provisions a plain `BKCS-OT/FreeBSD-14.3` Vagrant box.
 2. **Bootstrapping Script:** The `Vagrantfile` automatically downloads and executes `bootstrap.sh`.
-3. **Core Sync:** The script targets the `dev` branch of `OT-Project/OT-Security-Appliance`.
+3. **Core Sync:** The script targets the `main` branch of `OT-Project/OT-SA-Core`.
 4. **Mirror Configurations:** By default, packages and dependencies are fetched from `repo.kamiyuri.dev`.
 
 Upon completion of the bootstrap script, the VM configures necessary network interfaces, enables SSH by default, and reboots into a fully functional OPNsense gateway.
@@ -61,8 +61,8 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | `$opnsense_release` | The target OPNsense version. | `26.1` |
 | `$virtual_machine_ip` | The fixed IP address assigned to the LAN interface. | `192.168.56.56` |
 | `$repo_base_url` | Base URL used to resolve the custom package mirror. | `https://repo.kamiyuri.dev` |
-| `$core_clone_url` | Explicit URL to clone the `OT-SA-Core` repository if not presented in the host. | `https://github.com/OT-Project/OT-Security-Appliance.git` |
-| `$core_fetch_url` | Explicit URL to an archive of the OPNsense core code (optional). | `https://github.com/OT-Project/OT-Security-Appliance/archive/refs/tags/26.1.tar.gz` |
+| `$core_clone_url` | Explicit URL to clone the `OT-SA-Core` repository if not presented in the host. | `https://github.com/OT-Project/OT-SA-Core.git` |
+| `$core_fetch_url` | Explicit URL to an archive of the OPNsense core code (optional). | `https://github.com/OT-Project/OT-SA-Core/archive/refs/heads/main.tar.gz` |
 | `$vagrant_mount_path` | Absolute path inside the VM mapped to the host directory. | `/var/vagrant` |
 
 ### Network Topology

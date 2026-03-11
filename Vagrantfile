@@ -20,7 +20,7 @@ Vagrant.configure(2) do |config|
   $virtual_machine_ip = '192.168.56.56'
   $vagrant_mount_path = '/var/vagrant'          # Shared path for development environment
   $repo_base_url = 'https://repo.kamiyuri.dev'  # Custom package repository
-  $core_fetch_url = 'https://github.com/OT-Project/OT-Security-Appliance/archive/refs/tags/26.1.tar.gz' # Custom code download URL (optional)
+  $core_fetch_url = 'https://github.com/OT-Project/OT-SA-Core/archive/refs/heads/main.tar.gz' # Custom code download URL (optional)
 
   #
   # Box configuration - using local box file

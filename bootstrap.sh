@@ -7,9 +7,9 @@ fetch -o opnsense-bootstrap.sh https://raw.githubusercontent.com/OT-Project/OT-S
 sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
 
 # Start bootstrap with custom mirror and our core fork
-#   -A OT-Project      = fetch core from github.com/OT-Project/OT-Security-Appliance
-#   -R OT-Security-Appliance = core repository name
-#   -B dev             = use 'dev' branch instead of stable/<release>
+#   -A OT-Project      = fetch core from github.com/OT-Project/OT-SA-Core
+#   -R OT-SA-Core      = core repository name
+#   -B main            = use 'main' branch instead of stable/<release>
 #   -m <url>           = use custom package mirror + add otsa repo
 #   -r <release>       = target OPNsense release
 OPTS="-y"
@@ -19,8 +19,8 @@ fi
 
 env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh \
   -A OT-Project \
-  -R OT-Security-Appliance \
-  -B dev \
+  -R OT-SA-Core \
+  -B main \
   -m ${REPO_BASE_URL} \
   -r ${OPNSENSE_RELEASE} \
   ${OPTS}
