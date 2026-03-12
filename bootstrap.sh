@@ -1,13 +1,7 @@
 #!/bin/sh
 
-# Download or use local OPNsense bootstrap script
-if [ -f /usr/update/src/bootstrap/opnsense-bootstrap.sh.in ]; then
-  echo "==> Using local OPNsense bootstrap script from /usr/update"
-  cp /usr/update/src/bootstrap/opnsense-bootstrap.sh.in opnsense-bootstrap.sh
-else
-  echo "==> Fetching OPNsense bootstrap script from GitHub..."
-  fetch -o opnsense-bootstrap.sh https://raw.githubusercontent.com/OT-Project/OT-SA-Update/main/src/bootstrap/opnsense-bootstrap.sh.in
-fi
+# Download the OPNsense bootstrap script from our fork
+fetch -o opnsense-bootstrap.sh https://raw.githubusercontent.com/OT-Project/OT-SA-Update/main/src/bootstrap/opnsense-bootstrap.sh.in
 
 # Remove reboot command from bootstrap script
 sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
@@ -26,19 +20,10 @@ if [ -n "${OPNSENSE_PIN_VERSION}" ]; then
   OPTS="${OPTS} -p ${OPNSENSE_PIN_VERSION}"
 fi
 
-# If local core is available, archive it and use it via -U flag
-if [ -d /usr/core/.git ]; then
-  CORE_REPO_NAME=${CORE_REPOSITORY:-OT-SA-Core}
-  CORE_BRANCH_NAME=${CORE_BRANCH:-dev}
-  echo "==> Archiving local ${CORE_REPO_NAME} (branch ${CORE_BRANCH_NAME}) for bootstrap..."
-  (cd /usr/core && git archive --format=tar.gz --prefix=${CORE_REPO_NAME}-${CORE_BRANCH_NAME}/ HEAD > /tmp/${CORE_BRANCH_NAME}.tar.gz)
-  OPTS="${OPTS} -U file:///tmp"
-fi
-
 env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh \
   -A OT-Project \
   -R ${CORE_REPOSITORY:-OT-SA-Core} \
-  -B ${CORE_BRANCH:-dev} \
+  -B ${CORE_BRANCH:-main} \
   -r ${OPNSENSE_RELEASE} \
   ${OPTS}
 

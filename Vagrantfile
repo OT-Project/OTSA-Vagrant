@@ -1,21 +1,13 @@
-$core_clone_url = ENV.fetch('CORE_CLONE_URL', 'https://github.com/OT-Project/OT-SA-Core.git')
-$update_clone_url = ENV.fetch('UPDATE_CLONE_URL', 'https://github.com/OT-Project/OT-SA-Update.git')
+# Repository URL to clone OT-SA-Core from (can be overridden via environment variable)
+$core_clone_url = ENV.fetch('CORE_CLONE_URL', 'https://github.com/OT-Project/OT-Security-Appliance.git')
 
-# Auto-clone repositories if they don't exist on the host
+# Auto-clone OT-SA-Core repository if it doesn't exist on the host
 core_dir = File.expand_path('../OT-SA-Core', __dir__)
 if File.directory?(core_dir)
   puts "==> Found existing OT-SA-Core repository at #{core_dir}"
 else
   puts "==> OT-SA-Core directory not found. Cloning from #{$core_clone_url} to #{core_dir}..."
   system("git clone #{$core_clone_url} #{core_dir}")
-end
-
-update_dir = File.expand_path('../OT-SA-Update', __dir__)
-if File.directory?(update_dir)
-  puts "==> Found existing OT-SA-Update repository at #{update_dir}"
-else
-  puts "==> OT-SA-Update directory not found. Cloning from #{$update_clone_url} to #{update_dir}..."
-  system("git clone #{$update_clone_url} #{update_dir}")
 end
 
 Vagrant.configure(2) do |config|
@@ -40,7 +32,6 @@ Vagrant.configure(2) do |config|
   config.vm.synced_folder '.', '/vagrant', id: 'vagrant-root', disabled: true
   config.vm.synced_folder '.', "#{$vagrant_mount_path}", type: 'nfs', nfs_udp: false
   config.vm.synced_folder '../OT-SA-Core', '/usr/core', type: 'nfs', nfs_udp: false
-  config.vm.synced_folder '../OT-SA-Update', '/usr/update', type: 'nfs', nfs_udp: false
 
   config.ssh.shell = '/bin/sh'
   config.ssh.keep_alive = true

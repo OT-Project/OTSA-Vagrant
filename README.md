@@ -63,8 +63,8 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | `$repo_base_url` | Base URL used to resolve a custom package mirror. If left empty, official OPNsense repositories are used. | `https://repo.kamiyuri.dev` |
 | `$opnsense_pin_version` | Option to lock the installation to a specific release version (e.g., `26.1`), preventing automatic bootstrapping to newer rolling patches (`26.1.x`). | `26.1` |
 | `$core_repository` | Name of the GitHub repository containing the core code under the OT-Project org. | `OT-SA-Core` |
+| `$core_branch` | Explicit branch or tag name of the core code repository to fetch. | `dev` |
 | `$core_clone_url` | Explicit URL to clone the `OT-SA-Core` repository if not presented in the host. | `https://github.com/OT-Project/OT-SA-Core.git` |
-| `$update_clone_url` | Explicit URL to clone the `OT-SA-Update` repository if not presented in the host. | `https://github.com/OT-Project/OT-SA-Update.git` |
 | `$vagrant_mount_path` | Absolute path inside the VM mapped to the host directory. | `/var/vagrant` |
 
 ### Network Topology
@@ -115,15 +115,7 @@ Root-level access (`sudo`) via the `vagrant` user requires no password prompt by
 ### Development Workflow
 The root of this project folder is actively mirrored into the OPNsense VM at `/var/vagrant`. This allows developers to edit scripts, repositories, and configurations comfortably on their host machine and instantly evaluate changes inside the VM's active environment.
 
-Additionally, if adjacent `../OT-SA-Core` or `../OT-SA-Update` repository directories do not exist on the host, the `Vagrantfile` will automatically clone them over via `$core_clone_url` and `$update_clone_url`. 
-
-The system sets up NFS synced folders:
-- `../OT-SA-Core` -> `/usr/core`
-- `../OT-SA-Update` -> `/usr/update`
-
-To enable **Offline/Unpushed Code Development**, the `bootstrap.sh` script detects these mounts:
-1. It uses the local `opnsense-bootstrap.sh.in` from `/usr/update` instead of fetching from GitHub.
-2. It archives the current state of your local `../OT-SA-Core` repository into a temporary tarball and instructs the bootstrap process to use it via the `-U` flag. This ensures that any unpushed changes or local branch states are immediately reflected in the OPNsense build.
+Additionally, if an adjacent `../OT-SA-Core` repository directory does not exist on the host, the `Vagrantfile` will automatically clone it over via `$core_clone_url` (which can be overridden with the `CORE_CLONE_URL` environment variable). The system then sets up an NFS synced folder bridging `../OT-SA-Core` to `/usr/core` within the VM, ensuring seamless cross-environment software development.
 
 ## Troubleshooting & Maintenance
 
