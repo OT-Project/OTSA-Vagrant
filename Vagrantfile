@@ -31,7 +31,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.synced_folder '.', '/vagrant', id: 'vagrant-root', disabled: true
   config.vm.synced_folder '.', "#{$vagrant_mount_path}", type: 'nfs', nfs_udp: false
-  config.vm.synced_folder '../OT-SA-Core', '/usr/core', type: 'nfs', nfs_udp: false
+  config.vm.synced_folder '../OT-SA-Core', "#{$vagrant_mount_path}/core", type: 'nfs', nfs_udp: false
 
   config.ssh.shell = '/bin/sh'
   config.ssh.keep_alive = true
