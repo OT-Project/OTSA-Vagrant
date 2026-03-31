@@ -38,6 +38,15 @@ Vagrant.configure(2) do |config|
 
   config.vm.boot_timeout = 6000
 
+  # Hide .git directories inside NFS mounts (overmount with empty tmpfs)
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    for gitdir in #{$vagrant_mount_path}/.git #{$vagrant_mount_path}/core/.git; do
+      if [ -d "$gitdir" ]; then
+        mount -t tmpfs tmpfs "$gitdir"
+      fi
+    done
+  SHELL
+
   # Configure private networks - LAN (static), OPT1 (dhcp), OPT2 (dhcp)
   config.vm.network 'private_network', ip: $virtual_machine_ip, auto_config: false
   config.vm.network "private_network", type: "dhcp"
