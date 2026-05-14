@@ -25,8 +25,8 @@ The primary goal of this Vagrant environment is to abstract away the complexity 
 This environment utilizes a layered deployment architecture:
 1. **Base OS:** Provisions a plain `BKCS-OT/FreeBSD-14.3` Vagrant box.
 2. **Bootstrapping Script:** The `Vagrantfile` automatically downloads and executes `bootstrap.sh`.
-3. **Core Sync:** The script targets the `main` branch of `OT-Project/OT-SA-Core`.
-4. **Mirror Configurations:** By default, packages and dependencies are fetched from `repo.kamiyuri.dev`.
+3. **Core Sync:** The script targets the `dev` branch of `OT-Project/OTSA-Core`.
+4. **Mirror Configurations:** By default, packages and dependencies are fetched from the internal mirror at `http://192.168.150.49`.
 
 Upon completion of the bootstrap script, the VM configures necessary network interfaces, enables SSH by default, and reboots into a fully functional OPNsense gateway.
 
@@ -60,11 +60,15 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | --- | --- | --- |
 | `$opnsense_release` | The target OPNsense version. | `26.1` |
 | `$virtual_machine_ip` | The fixed IP address assigned to the LAN interface. | `192.168.56.56` |
-| `$otsa_mirror_url` | Base URL of the OTSA package mirror (override via `OTSA_MIRROR_URL=...`). Passed to `opnsense-bootstrap -m` so the appliance writes it into `/usr/local/etc/pkg/repos/OPNsense.conf` during provisioning. Leave empty to keep upstream defaults. | `https://repo.kamiyuri.dev` |
+| `$otsa_mirror_url` | Base URL of the OTSA package mirror (override via `OTSA_MIRROR_URL=...`). Passed to `opnsense-bootstrap -m` so the appliance writes it into `/usr/local/etc/pkg/repos/OPNsense.conf` during provisioning. The bootstrap script appends `/${ABI}/${RELEASE}/latest` (or `…/MINT/${PIN}/latest` when pinned), so set this to the **root** of the mirror, not the full repo path. Leave empty to keep upstream defaults. | `http://192.168.150.49` |
 | `$opnsense_pin_version` | Option to lock the installation to a specific release version (e.g., `26.1`), preventing automatic bootstrapping to newer rolling patches (`26.1.x`). | `26.1` |
-| `$core_repository` | Name of the GitHub repository containing the core code under the OT-Project org. | `OT-SA-Core` |
-| `$core_branch` | Explicit branch or tag name of the core code repository to fetch. | `dev` |
-| `$core_clone_url` | Explicit URL to clone the `OT-SA-Core` repository if not presented in the host. | `https://github.com/OT-Project/OT-SA-Core.git` |
+| `$core_account` | GitHub organization that owns the OTSA repositories. Used to build `$core_clone_url` and passed to `opnsense-bootstrap -A`. Override via `CORE_ACCOUNT=...`. | `OT-Project` |
+| `$core_repository` | Name of the GitHub repository containing the core code under `$core_account`. Override via `CORE_REPOSITORY=...`. | `OTSA-Core` |
+| `$core_branch` | Explicit branch or tag name of the core code repository to fetch. Override via `CORE_BRANCH=...`. | `dev` |
+| `$core_clone_url` | Explicit URL to clone the core repository if not present on the host. Defaults to `https://github.com/$core_account/$core_repository.git`. Override via `CORE_CLONE_URL=...`. | derived |
+| `$update_repository` | GitHub repository under `$core_account` that contains `src/bootstrap/opnsense-bootstrap.sh.in`. Override via `UPDATE_REPOSITORY=...`. | `OTSA-Update` |
+| `$update_branch` | Branch of `$update_repository` to fetch the bootstrap script from. Override via `UPDATE_BRANCH=...`. | `main` |
+| `$bootstrap_script_url` | Absolute URL of `opnsense-bootstrap.sh.in`. Defaults to the `raw.githubusercontent.com` URL derived from `$core_account`, `$update_repository`, and `$update_branch`. Set this when you want to mirror the bootstrap script on an internal HTTP server. Override via `BOOTSTRAP_SCRIPT_URL=...`. | derived |
 | `$vagrant_mount_path` | Absolute path inside the VM mapped to the host directory. | `/var/vagrant` |
 
 ### Network Topology
@@ -132,7 +136,7 @@ Root-level access (`sudo`) via the `vagrant` user requires no password prompt by
 ### Development Workflow
 The root of this project folder is actively mirrored into the OPNsense VM at `/var/vagrant`. This allows developers to edit scripts, repositories, and configurations comfortably on their host machine and instantly evaluate changes inside the VM's active environment.
 
-Additionally, if an adjacent `../OT-SA-Core` repository directory does not exist on the host, the `Vagrantfile` will automatically clone it over via `$core_clone_url` (which can be overridden with the `CORE_CLONE_URL` environment variable). The system then sets up an NFS synced folder bridging `../OT-SA-Core` to `/usr/core` within the VM, ensuring seamless cross-environment software development.
+Additionally, if an adjacent `../OTSA-Core` repository directory does not exist on the host, the `Vagrantfile` will automatically clone it over via `$core_clone_url` (which can be overridden with the `CORE_CLONE_URL` environment variable). The system then sets up an NFS synced folder bridging `../OTSA-Core` to `${vagrant_mount_path}/core` (default `/var/vagrant/core`) within the VM, ensuring seamless cross-environment software development.
 
 ## Troubleshooting & Maintenance
 

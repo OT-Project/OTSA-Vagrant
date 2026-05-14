@@ -1,13 +1,22 @@
 #!/bin/sh
 
-# Download the OPNsense bootstrap script from our fork
-fetch -o opnsense-bootstrap.sh https://raw.githubusercontent.com/OT-Project/OT-SA-Update/main/src/bootstrap/opnsense-bootstrap.sh.in
+# All configuration is supplied by the Vagrantfile via environment variables.
+# Fail fast if invoked standalone without those vars set.
+: "${BOOTSTRAP_SCRIPT_URL:?BOOTSTRAP_SCRIPT_URL must be set (run via Vagrant or export it manually)}"
+: "${CORE_ACCOUNT:?CORE_ACCOUNT must be set}"
+: "${CORE_REPOSITORY:?CORE_REPOSITORY must be set}"
+: "${CORE_BRANCH:?CORE_BRANCH must be set}"
+: "${OPNSENSE_RELEASE:?OPNSENSE_RELEASE must be set}"
+: "${VIRTUAL_MACHINE_IP:?VIRTUAL_MACHINE_IP must be set}"
+
+# Download the OPNsense bootstrap script from the update repo
+fetch -o opnsense-bootstrap.sh "${BOOTSTRAP_SCRIPT_URL}"
 
 # Remove reboot command from bootstrap script
 sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
 
 # Start bootstrap with custom mirror and our core fork
-#   -A OT-Project      = fetch core from github.com/OT-Project/${CORE_REPOSITORY}
+#   -A <account>       = fetch core from github.com/<account>/${CORE_REPOSITORY}
 #   -R ...             = core repository name
 #   -B ...             = use branch instead of stable/<release>
 #   -m <url>           = use custom package mirror + add otsa repo
@@ -21,10 +30,10 @@ if [ -n "${OPNSENSE_PIN_VERSION}" ]; then
 fi
 
 env CORE_PHP=84 CORE_PYTHON=312 sh ./opnsense-bootstrap.sh \
-  -A OT-Project \
-  -R ${CORE_REPOSITORY:-OT-SA-Core} \
-  -B ${CORE_BRANCH:-main} \
-  -r ${OPNSENSE_RELEASE} \
+  -A "${CORE_ACCOUNT}" \
+  -R "${CORE_REPOSITORY}" \
+  -B "${CORE_BRANCH}" \
+  -r "${OPNSENSE_RELEASE}" \
   ${OPTS}
 
 # =============================================
