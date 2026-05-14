@@ -54,7 +54,7 @@ Before beginning, ensure the following tools are installed on your host machine:
 
 ## Environment Configuration
 
-Environment variables modifying the behavior of the Vagrant deployment are defined at the top of the `Vagrantfile`.
+Environment variables modifying the behavior of the Vagrant deployment are defined at the top of each provider-specific Vagrantfile (`Vagrantfile.libvirt` and `Vagrantfile.virtualbox` — they share the same set of variables). Keep both files in sync when adding or renaming a variable.
 
 | Variable | Description | Default Value |
 | --- | --- | --- |
@@ -80,19 +80,36 @@ The virtual machine is provisioned with 4 network interfaces (`virtio`) to simul
 
 ## Deployment (Getting Started)
 
-To initialize the environment, select the provider available on your machine.
+The repository now ships **two provider-specific Vagrantfiles**:
+
+| File                       | Provider     |
+| -------------------------- | ------------ |
+| `Vagrantfile.libvirt`      | Libvirt/KVM  |
+| `Vagrantfile.virtualbox`   | VirtualBox   |
+
+A thin `Vagrantfile` chooser sits on top and picks one of the two based on the `OTSA_PROVIDER` environment variable (default: `libvirt`).
+
+**Deploy via Libvirt (KVM) — default:**
+```bash
+vagrant up
+# or, equivalently:
+OTSA_PROVIDER=libvirt vagrant up
+```
 
 **Deploy via VirtualBox:**
 ```bash
-vagrant up --provider=virtualbox
+OTSA_PROVIDER=virtualbox vagrant up
 ```
 
-**Deploy via Libvirt (KVM):**
+**Bypass the chooser entirely** (useful if you want CI scripts to be explicit):
 ```bash
-vagrant up --provider=libvirt
+VAGRANT_VAGRANTFILE=Vagrantfile.libvirt    vagrant up --provider=libvirt
+VAGRANT_VAGRANTFILE=Vagrantfile.virtualbox vagrant up --provider=virtualbox
 ```
 
 > **Note**: During the initial deployment, the virtual machine will gracefully halt itself after the bootstrap completes. **You must issue a second `vagrant up`** immediately afterward to bring the instance back online.
+>
+> **Switching providers on an existing checkout:** Vagrant stores per-machine state under `.vagrant/`. If you previously ran `vagrant up` with one provider and switch to the other, run `vagrant destroy -f` first or you will see provider-mismatch errors.
 
 ## Access and Workflow
 
@@ -122,7 +139,7 @@ Additionally, if an adjacent `../OT-SA-Core` repository directory does not exist
 **Changing the LAN IP Configuration**
 If `192.168.56.56` collides with your local infrastructure:
 1. Turn off the active instance: `vagrant halt`.
-2. Modify `$virtual_machine_ip` in the `Vagrantfile`.
+2. Modify `$virtual_machine_ip` in `Vagrantfile.libvirt` **and** `Vagrantfile.virtualbox` (they must stay in sync).
 3. Restart the environment: `vagrant up`.
 4. Access the web interface using the newly assigned IP address.
 
@@ -130,7 +147,7 @@ If `192.168.56.56` collides with your local infrastructure:
 To completely destroy the environment and re-sync from scratch, execute:
 ```bash
 vagrant destroy -f
-vagrant up --provider=<virtualbox|libvirt>
+OTSA_PROVIDER=<libvirt|virtualbox> vagrant up
 ```
 
 ---
