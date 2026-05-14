@@ -13,8 +13,8 @@ sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
 #   -m <url>           = use custom package mirror + add otsa repo
 #   -r <release>       = target OPNsense release
 OPTS="-y"
-if [ -n "${REPO_BASE_URL}" ]; then
-  OPTS="${OPTS} -m ${REPO_BASE_URL}"
+if [ -n "${OTSA_MIRROR_URL}" ]; then
+  OPTS="${OPTS} -m ${OTSA_MIRROR_URL}"
 fi
 if [ -n "${OPNSENSE_PIN_VERSION}" ]; then
   OPTS="${OPTS} -p ${OPNSENSE_PIN_VERSION}"

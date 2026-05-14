@@ -60,7 +60,7 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | --- | --- | --- |
 | `$opnsense_release` | The target OPNsense version. | `26.1` |
 | `$virtual_machine_ip` | The fixed IP address assigned to the LAN interface. | `192.168.56.56` |
-| `$repo_base_url` | Base URL used to resolve a custom package mirror. If left empty, official OPNsense repositories are used. | `https://repo.kamiyuri.dev` |
+| `$otsa_mirror_url` | Base URL of the OTSA package mirror (override via `OTSA_MIRROR_URL=...`). Passed to `opnsense-bootstrap -m` so the appliance writes it into `/usr/local/etc/pkg/repos/OPNsense.conf` during provisioning. Leave empty to keep upstream defaults. | `https://repo.kamiyuri.dev` |
 | `$opnsense_pin_version` | Option to lock the installation to a specific release version (e.g., `26.1`), preventing automatic bootstrapping to newer rolling patches (`26.1.x`). | `26.1` |
 | `$core_repository` | Name of the GitHub repository containing the core code under the OT-Project org. | `OT-SA-Core` |
 | `$core_branch` | Explicit branch or tag name of the core code repository to fetch. | `dev` |
