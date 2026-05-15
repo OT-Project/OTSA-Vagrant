@@ -22,6 +22,7 @@ Vagrant.configure(2) do |config|
   $update_repository      = ENV.fetch('UPDATE_REPOSITORY', 'OTSA-Update')
   $update_branch          = ENV.fetch('UPDATE_BRANCH', 'main')
   $opnsense_pin_version   = ENV.fetch('OPNSENSE_PIN_VERSION', '26.1')
+  $wan_bridge_dev         = ENV.fetch('OTSA_WAN_BRIDGE', '')        # Host bridge interface for the WAN NIC; empty => provider default
 
   # URL to clone the core repository from (defaults derived from $core_account/$core_repository)
   $core_clone_url = ENV.fetch(
@@ -69,10 +70,16 @@ Vagrant.configure(2) do |config|
   SHELL
 
   #
-  # Network — LAN (static), OPT1 (dhcp), OPT2 (dhcp)
-  # Libvirt automatically provisions a separate management network.
+  # Network — LAN (static), WAN (bridge), OPT (dhcp), OPT (dhcp)
+  # Libvirt automatically provisions a separate management NAT used by `vagrant ssh`
+  # (vtnet0 in the guest); it is wired into OPNsense as OPT1 "MGMT" by bootstrap.sh.
   #
   config.vm.network 'private_network', ip: $virtual_machine_ip, auto_config: false
+  if $wan_bridge_dev.empty?
+    config.vm.network 'public_network'
+  else
+    config.vm.network 'public_network', dev: $wan_bridge_dev, mode: 'bridge', type: 'direct'
+  end
   config.vm.network 'private_network', type: 'dhcp'
   config.vm.network 'private_network', type: 'dhcp'
 
@@ -101,6 +108,7 @@ Vagrant.configure(2) do |config|
     "CORE_REPOSITORY"      => $core_repository,
     "CORE_BRANCH"          => $core_branch,
     "BOOTSTRAP_SCRIPT_URL" => $bootstrap_script_url,
-    "OPNSENSE_PIN_VERSION" => $opnsense_pin_version
+    "OPNSENSE_PIN_VERSION" => $opnsense_pin_version,
+    "OTSA_WAN_BRIDGE"      => $wan_bridge_dev
   }, path: "bootstrap.sh"
 end

@@ -70,17 +70,31 @@ Environment variables modifying the behavior of the Vagrant deployment are defin
 | `$update_branch` | Branch of `$update_repository` to fetch the bootstrap script from. Override via `UPDATE_BRANCH=...`. | `main` |
 | `$bootstrap_script_url` | Absolute URL of `opnsense-bootstrap.sh.in`. Defaults to the `raw.githubusercontent.com` URL derived from `$core_account`, `$update_repository`, and `$update_branch`. Set this when you want to mirror the bootstrap script on an internal HTTP server. Override via `BOOTSTRAP_SCRIPT_URL=...`. | derived |
 | `$vagrant_mount_path` | Absolute path inside the VM mapped to the host directory. | `/var/vagrant` |
+| `$wan_bridge_dev` | Host interface that the WAN NIC bridges onto (e.g. `eth0`, `wlan0`, `br0`). Override via `OTSA_WAN_BRIDGE=...`. Leave empty to let libvirt auto-select / VirtualBox prompt at `vagrant up`. | empty |
 
 ### Network Topology
 
-The virtual machine is provisioned with 4 network interfaces (`virtio`) to simulate a robust firewall setup:
-1. **WAN (NAT/Management):** Bound to Vagrant's default connection to fetch external packages.
-2. **LAN (Host-Only/Private):** Fixed IP (`192.168.56.56`) used for accessing the Web UI.
-3. **OPT1 (Private DHCP):** Reserved for custom internal routing and testing.
-4. **OPT2 (Private DHCP):** Reserved for custom internal routing and testing.
+The virtual machine is provisioned with 5 `virtio` network interfaces. Guest interface order is the same for both providers (provider-managed NAT first, then Vagrantfile declarations in order):
 
-* **VirtualBox:** LAN relies on the host-only IP range `192.168.56.0/21`. Avoid using `.1`, as it is reserved. 
-* **Libvirt:** Provisions a dedicated management network (`vagrant-libvirt`) separate from the LAN traffic payload.
+| Guest NIC | Role     | Provided by                                                 |
+| --------- | -------- | ----------------------------------------------------------- |
+| `vtnet0`  | **MGMT** | Provider-managed NAT (libvirt `vagrant-libvirt` / VBox NAT) — `vagrant ssh` lands here; wired into OPNsense as OPT1 "MGMT" (DHCP). |
+| `vtnet1`  | **LAN**  | Host-only/private network, static `192.168.56.56`. Web UI lives here. |
+| `vtnet2`  | **WAN**  | Bridge to the host's physical LAN (`public_network`). Override the bridge device with `OTSA_WAN_BRIDGE=<iface>`. Receives DHCP from the upstream LAN — reachable from other machines on that LAN. |
+| `vtnet3`  | OPT      | Private DHCP. Reserved for custom internal routing and testing. |
+| `vtnet4`  | OPT      | Private DHCP. Reserved for custom internal routing and testing. |
+
+* **VirtualBox:** LAN relies on the host-only IP range `192.168.56.0/21`. Avoid using `.1`, as it is reserved. If `OTSA_WAN_BRIDGE` is unset, VirtualBox will prompt interactively for the bridge interface.
+* **Libvirt:** Keeps the dedicated management network (`vagrant-libvirt`) separate from WAN traffic — `vagrant ssh` always uses the management NAT, never the bridged WAN.
+
+#### Host-routed subnet (OTSA mirror at `192.168.150.0/24`)
+
+The OTSA package mirror lives at `192.168.150.49`, reachable two different ways depending on where the host is:
+
+- **At the office:** directly on the host's physical LAN.
+- **At home:** only through the host's Wireguard `bkcs` tunnel.
+
+In both cases the host has a working route; the VM does not. To make the VM use the host as next hop regardless of location, `bootstrap.sh` injects a gateway entry (`MGMT_GW`, dynamic next-hop on OPT1) and a static route `192.168.150.0/24 → MGMT_GW`. Default Internet traffic still egresses via the bridged WAN; only the mirror subnet is forced through the management NAT. Swap the subnet by editing [`files/host_route.xml`](files/host_route.xml) if your mirror moves.
 
 ## Deployment (Getting Started)
 
