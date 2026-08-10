@@ -17,17 +17,46 @@ Vagrant.configure(2) do |config|
   # General settings
   #
 
+  # Mode: 'official' => repo chuẩn của OPNsense, 'custom' => repo nội bộ của bạn
+  $otsa_mode = ENV.fetch('OTSA_MODE', 'custom').downcase
+  unless %w[official custom].include?($otsa_mode)
+    raise "OTSA_MODE phải là 'official' hoặc 'custom' (nhận được: '#{$otsa_mode}')"
+  end
+  puts "==> OTSA_MODE = #{$otsa_mode}"
+
+  $mode_defaults = {
+    'official' => {
+      'OTSA_MIRROR_URL'   => 'https://pkg.opnsense.org',
+      'CORE_ACCOUNT'      => 'opnsense',
+      'CORE_REPOSITORY'   => 'core',
+      'CORE_BRANCH'       => 'master',
+      'UPDATE_REPOSITORY' => 'update',
+      'UPDATE_BRANCH'     => 'master'
+    },
+    'custom' => {
+      'OTSA_MIRROR_URL'   => 'http://192.168.150.49',
+      'CORE_ACCOUNT'      => 'OT-Project',
+      'CORE_REPOSITORY'   => 'OTSA-Core',
+      'CORE_BRANCH'       => 'dev',
+      'UPDATE_REPOSITORY' => 'OTSA-Update',
+      'UPDATE_BRANCH'     => 'main'
+    }
+  }[$otsa_mode]
+
+  # ENV vẫn override được từng giá trị riêng lẻ, mode chỉ quyết định mặc định
+  otsa_env = ->(key) { ENV.fetch(key, $mode_defaults[key]) }
+
   $opnsense_release       = '26.1'
   $virtual_machine_ip     = '192.168.56.56'
   $vagrant_mount_path     = '/var/vagrant'
-  $otsa_mirror_url        = ENV.fetch('OTSA_MIRROR_URL', 'http://192.168.150.49')
-  $core_account           = ENV.fetch('CORE_ACCOUNT', 'OT-Project')
-  $core_repository        = ENV.fetch('CORE_REPOSITORY', 'OTSA-Core')
-  $core_branch            = ENV.fetch('CORE_BRANCH', 'dev')
-  $update_repository      = ENV.fetch('UPDATE_REPOSITORY', 'OTSA-Update')
-  $update_branch          = ENV.fetch('UPDATE_BRANCH', 'main')
+  $otsa_mirror_url        = otsa_env.call('OTSA_MIRROR_URL')
+  $core_account           = otsa_env.call('CORE_ACCOUNT')
+  $core_repository        = otsa_env.call('CORE_REPOSITORY')
+  $core_branch            = otsa_env.call('CORE_BRANCH')
+  $update_repository      = otsa_env.call('UPDATE_REPOSITORY')
+  $update_branch          = otsa_env.call('UPDATE_BRANCH')
   $opnsense_pin_version   = ENV.fetch('OPNSENSE_PIN_VERSION', '26.1')
-  $wan_bridge_dev         = ENV.fetch('OTSA_WAN_BRIDGE', '')        # Host bridge interface for the WAN NIC; empty => VirtualBox prompts at `vagrant up`
+  $wan_bridge_dev         = ENV.fetch('OTSA_WAN_BRIDGE', '')
 
   # URL to clone the core repository from (defaults derived from $core_account/$core_repository)
   $core_clone_url = ENV.fetch(
