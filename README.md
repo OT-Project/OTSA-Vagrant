@@ -6,6 +6,7 @@ Welcome to the **OT-Project** Vagrant-based OPNsense development environment. Th
 <summary><strong>Table of Contents</strong></summary>
 
 - [Overview](#overview)
+- [Vagrant Primer](#vagrant-primer)
 - [Architecture & Bootstrapping Mechanism](#architecture--bootstrapping-mechanism)
 - [Prerequisites](#prerequisites)
 - [Environment Configuration](#environment-configuration)
@@ -20,12 +21,57 @@ Welcome to the **OT-Project** Vagrant-based OPNsense development environment. Th
 
 The primary goal of this Vagrant environment is to abstract away the complexity of configuring a reliable, isolated FreeBSD-based OPNsense instance for software development. By using either VirtualBox or Libvirt (KVM) as the provider, developers receive a uniform testing environment regardless of their host system OS.
 
+## Vagrant Primer
+
+New to Vagrant? It is a command-line tool that builds a virtual machine from a text file. Instead of clicking through a hypervisor GUI and writing down the steps afterwards, you describe the machine once — in the `Vagrantfile` — and everyone runs `vagrant up` to get an identical VM.
+
+Five terms cover almost everything used here:
+
+| Term | What it means in this project |
+| --- | --- |
+| **Box** | The base image Vagrant starts from: `BKCS-OT/FreeBSD-14.3`, a plain FreeBSD install. OPNsense is layered on top afterwards. |
+| **Provider** | The hypervisor that actually runs the VM — Libvirt/KVM or VirtualBox (see below). |
+| **Provisioner** | A script Vagrant executes *inside* the guest after boot. Here it is [`bootstrap.sh`](bootstrap.sh), which converts the FreeBSD box into an OPNsense appliance. |
+| **Synced folder** | A host directory mounted into the guest. This repository is mounted at `/var/vagrant`, so edits made on your host are visible in the VM immediately. |
+| **`.vagrant/`** | Local, gitignored state: which VM belongs to this directory, which provider created it, the generated SSH key. It is managed for you — remove it through `vagrant destroy`, not by hand. |
+
+Day-to-day lifecycle:
+
+```bash
+vagrant up          # create the VM the first time, or boot an existing one
+vagrant ssh         # shell into the guest as the `vagrant` user
+vagrant halt        # graceful shutdown
+vagrant reload      # halt + up, picking up Vagrantfile changes
+vagrant provision   # re-run bootstrap.sh on a machine that is already running
+vagrant status      # is it running, and under which provider?
+vagrant destroy -f  # delete the VM; the next `vagrant up` rebuilds from scratch
+```
+
+Every command is scoped to the directory holding the `Vagrantfile`, so run them from the repository root. All tuning happens through environment variables rather than CLI flags — see [Environment Configuration](#environment-configuration).
+
+### Libvirt or VirtualBox?
+
+A **provider** is the hypervisor Vagrant drives. The VM description is identical either way; only the plumbing differs, which is why provider-specific settings are isolated in [`vagrant/libvirt.rb`](vagrant/libvirt.rb) and [`vagrant/virtualbox.rb`](vagrant/virtualbox.rb).
+
+| | Libvirt / KVM (default) | VirtualBox |
+| --- | --- | --- |
+| Host OS | Linux only | Linux, Windows, macOS (Intel) |
+| Nature | Virtualization built into the Linux kernel | Standalone application installed on top of the OS |
+| Performance | Faster; near-native I/O through virtio | Slower and heavier on the host |
+| Required plugin | `vagrant-libvirt` | `vagrant-disksize` (otherwise the disk stays at the box default instead of 64 GB) |
+| Bridged WAN | Picks an interface automatically, or set `OTSA_WAN_BRIDGE` | Prompts you to choose one unless `OTSA_WAN_BRIDGE` is set |
+| Management network | Dedicated network, kept separate from WAN traffic | NAT adapter attached as the first NIC |
+
+Choose Libvirt on Linux: it is the default and the better-tested path here. Choose VirtualBox on Windows or macOS, or wherever KVM is unavailable — for instance inside a VM that does not expose nested virtualization. Select it per command with `PROVIDER=virtualbox vagrant up`.
+
+The two cannot share state: `.vagrant/` records which provider built the machine, so switching providers requires `vagrant destroy -f` first.
+
 ## Architecture & Bootstrapping Mechanism
 
 This environment utilizes a layered deployment architecture:
 1. **Base OS:** Provisions a plain `BKCS-OT/FreeBSD-14.3` Vagrant box.
-2. **Bootstrapping Script:** The `Vagrantfile` automatically downloads and executes `bootstrap.sh`.
-3. **Core Sync:** The script targets the `master` branch of `opnsense/core` by default (`OTSA_MODE=custom` switches this to the `dev` branch of `OT-Project/OTSA-Core`).
+2. **Bootstrapping Script:** Vagrant provisions this repository's `bootstrap.sh` inside the guest. That script downloads `opnsense-bootstrap.sh.in` from `$bootstrap_script_url` — upstream `opnsense/update` in `official` mode, the `OT-Project/OTSA-Update` fork in `custom` mode — and runs it.
+3. **Core Sync:** The script targets the `stable/<release>` branch of `opnsense/core` by default (`stable/26.1`; `OTSA_MODE=custom` switches this to the `dev` branch of `OT-Project/OTSA-Core`). The host checkout is NFS-mounted at `/var/vagrant/core` and repacked locally instead of fetched from GitHub, so the tarball top-level directory mirrors GitHub naming: slashes in the branch become dashes (`stable/26.1` -> `core-stable-26.1`).
 4. **Mirror Configurations:** By default, packages and dependencies are fetched from upstream `https://pkg.opnsense.org`; in `custom` mode they come from the internal mirror at `http://192.168.150.49`.
 
 Upon completion of the bootstrap script, the VM configures necessary network interfaces, enables SSH by default, and reboots into a fully functional OPNsense gateway.
@@ -60,12 +106,18 @@ Shared configuration lives in a single file, [`vagrant/common.rb`](vagrant/commo
 
 `OTSA_MODE` selects a **set of defaults** for the repositories and package mirror. Individual variables can still be overridden one by one — the mode only decides what they fall back to.
 
+**`official` — a stock upstream appliance.** Core sources come from the public `opnsense/core` repository, the bootstrap script from `opnsense/update`, and packages from `pkg.opnsense.org`. Nothing internal is involved, so it works from any network. Use it as a clean reference point: reproducing a bug against unmodified OPNsense, or checking how a stock install behaves before the OT-Project changes are applied.
+
+**`custom` — the OT-Project appliance.** Core sources come from the internal fork `OT-Project/OTSA-Core` (branch `dev`), the bootstrap script from `OT-Project/OTSA-Update` (branch `main`), and packages from the internal mirror at `192.168.150.49`. This mode also injects a static route so that mirror subnet is reached through the host rather than the bridged WAN (see *Host-routed subnet* below). It is the mode for day-to-day work on the project's own code, and it requires reachability to the mirror — directly on the office LAN, or from home through the host's `bkcs` Wireguard tunnel.
+
+Which to pick: `custom` if you are developing OT-Project features, `official` if you need a vanilla OPNsense to compare against. The mode is only a bundle of defaults, so a single value can still be overridden on top of it, e.g. `OTSA_MODE=custom CORE_BRANCH=feature/xyz vagrant up`.
+
 | Variable | `official` (default) | `custom` |
 | --- | --- | --- |
 | `OTSA_MIRROR_URL` | `https://pkg.opnsense.org` | `http://192.168.150.49` |
 | `CORE_ACCOUNT` | `opnsense` | `OT-Project` |
 | `CORE_REPOSITORY` | `core` | `OTSA-Core` |
-| `CORE_BRANCH` | `master` | `dev` |
+| `CORE_BRANCH` | `stable/<release>` (`stable/26.1`) | `dev` |
 | `UPDATE_REPOSITORY` | `update` | `OTSA-Update` |
 | `UPDATE_BRANCH` | `master` | `main` |
 
@@ -76,18 +128,23 @@ OTSA_MODE=custom vagrant up     # internal OTSA repositories + mirror
 
 `custom` mode additionally injects the host-routed mirror subnet described below.
 
+> **Known limitation — bootstrap flags in `official` mode.** `bootstrap.sh` calls `opnsense-bootstrap.sh` with `-B <branch>`, `-m <mirror>` and `-p <pin>`. Those three options exist **only** in the OT-Project fork (`OT-Project/OTSA-Update`, getopts `A:a:bB:fim:p:qr:R:t:U:vVyz`); upstream `opnsense/update` has no `-m`/`-p` and parses `-B` as a no-argument *bare* flag (getopts `A:a:Bbfiqr:R:t:vVyz`). Since `official` mode downloads the upstream script, `getopts` stops at the operand following `-B` and silently discards `-r`, `-y`, `-m` and `-p`: `RELEASE` keeps its `%%RELEASE%%` placeholder and bare mode is switched on by accident.
+>
+> Practical consequence: `CORE_BRANCH`, `OTSA_MIRROR_URL` and `OPNSENSE_PIN_VERSION` take effect in `custom` mode only. Upstream already targets `stable/${RELEASE}` on its own, so the smallest fix is to stop passing `-B`/`-m`/`-p` when `OTSA_MODE=official`.
+
 ### Individual variables
 
 | Variable | Description | Default Value |
 | --- | --- | --- |
+| `PROVIDER` | Virtualization provider, read by the entry-point `Vagrantfile`: `libvirt` (alias `kvm`) or `virtualbox` (alias `vbox`). Any other value aborts `vagrant up`. | `libvirt` |
 | `$otsa_mode` | Deployment mode, `official` or `custom` (see table above). Override via `OTSA_MODE=...`. | `official` |
-| `$opnsense_release` | The target OPNsense version. | `26.1` |
+| `$opnsense_release` | The target OPNsense version, passed to `opnsense-bootstrap -r`. Override via `OPNSENSE_RELEASE=...`. | `26.1` |
 | `$virtual_machine_ip` | The fixed IP address assigned to the LAN interface. | `192.168.56.56` |
-| `$otsa_mirror_url` | Base URL of the package mirror (override via `OTSA_MIRROR_URL=...`). Passed to `opnsense-bootstrap -m` so the appliance writes it into `/usr/local/etc/pkg/repos/OPNsense.conf` during provisioning. The bootstrap script appends `/${ABI}/${RELEASE}/latest` (or `…/MINT/${PIN}/latest` when pinned), so set this to the **root** of the mirror, not the full repo path. Leave empty to keep upstream defaults. | mode-dependent |
-| `$opnsense_pin_version` | Option to lock the installation to a specific release version (e.g., `26.1`), preventing automatic bootstrapping to newer rolling patches (`26.1.x`). | `26.1` |
+| `$otsa_mirror_url` | Base URL of the package mirror (override via `OTSA_MIRROR_URL=...`). Passed to `opnsense-bootstrap -m` so the appliance writes it into `/usr/local/etc/pkg/repos/OPNsense.conf` during provisioning. The bootstrap script appends `/${ABI}/${RELEASE}/latest` (or `…/MINT/${PIN}/latest` when pinned), so set this to the **root** of the mirror, not the full repo path. Leave empty to keep upstream defaults. ⚠️ `custom` mode only — see the note above. | mode-dependent |
+| `$opnsense_pin_version` | Option to lock the installation to a specific release version (e.g., `26.1`), preventing automatic bootstrapping to newer rolling patches (`26.1.x`). Override via `OPNSENSE_PIN_VERSION=...`; set it empty to drop the `-p` flag entirely. ⚠️ `custom` mode only — see the note above. | `26.1` |
 | `$core_account` | GitHub organization that owns the core repository. Used to build `$core_clone_url` and passed to `opnsense-bootstrap -A`. Override via `CORE_ACCOUNT=...`. | mode-dependent |
 | `$core_repository` | Name of the GitHub repository containing the core code under `$core_account`. Override via `CORE_REPOSITORY=...`. | mode-dependent |
-| `$core_branch` | Explicit branch or tag name of the core code repository to fetch. Override via `CORE_BRANCH=...`. | mode-dependent |
+| `$core_branch` | Explicit branch or tag name of the core code repository to fetch, passed to `opnsense-bootstrap -B`. In `official` mode it tracks `stable/$opnsense_release`. Override via `CORE_BRANCH=...`. ⚠️ `custom` mode only — see the note above. | mode-dependent |
 | `$core_clone_url` | Explicit URL to clone the core repository if not present on the host. Defaults to `https://github.com/$core_account/$core_repository.git`. Override via `CORE_CLONE_URL=...`. | derived |
 | `$update_repository` | GitHub repository under `$core_account` that contains `src/bootstrap/opnsense-bootstrap.sh.in`. Override via `UPDATE_REPOSITORY=...`. | mode-dependent |
 | `$update_branch` | Branch of `$update_repository` to fetch the bootstrap script from. Override via `UPDATE_BRANCH=...`. | mode-dependent |
@@ -132,18 +189,18 @@ The repository layout:
 | `vagrant/libvirt.rb`      | Libvirt/KVM provider block and bridged-WAN syntax.              |
 | `vagrant/virtualbox.rb`   | VirtualBox provider block, virtio NICs, disk resizing.          |
 
-`Vagrantfile` picks the provider from the `OTSA_PROVIDER` environment variable (default: `libvirt`; `kvm` and `vbox` are accepted aliases) and sets `VAGRANT_DEFAULT_PROVIDER` accordingly, so no `--provider=` flag is needed.
+`Vagrantfile` picks the provider from the `PROVIDER` environment variable (default: `libvirt`; `kvm` and `vbox` are accepted aliases) and sets `VAGRANT_DEFAULT_PROVIDER` accordingly, so no `--provider=` flag is needed.
 
 **Deploy via Libvirt (KVM) — default:**
 ```bash
 vagrant up
 # or, equivalently:
-OTSA_PROVIDER=libvirt vagrant up
+PROVIDER=libvirt vagrant up
 ```
 
 **Deploy via VirtualBox:**
 ```bash
-OTSA_PROVIDER=virtualbox vagrant up
+PROVIDER=virtualbox vagrant up
 ```
 
 > **Note**: During the initial deployment, the virtual machine will gracefully halt itself after the bootstrap completes. **You must issue a second `vagrant up`** immediately afterward to bring the instance back online.
@@ -188,7 +245,7 @@ If `192.168.56.56` collides with your local infrastructure:
 To completely destroy the environment and re-sync from scratch, execute:
 ```bash
 vagrant destroy -f
-OTSA_PROVIDER=<libvirt|virtualbox> vagrant up
+PROVIDER=<libvirt|virtualbox> vagrant up
 ```
 
 ---

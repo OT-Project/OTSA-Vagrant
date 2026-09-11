@@ -31,10 +31,16 @@ sed -i '' -e '/reboot$/d' opnsense-bootstrap.sh
 # from that and patch the upstream script to copy it in place.
 if [ -d /var/vagrant/core ]; then
     LOCAL_CORE_TARBALL=/tmp/otsa-core-local.tar.gz
+    # Tên thư mục gốc trong tarball phải khớp thứ mà bootstrap script đi tìm.
+    # Cả hai biến thể đều suy ra từ tarball của GitHub, nơi "/" trong tên nhánh
+    # bị thay bằng "-" (stable/26.1 -> core-stable-26.1): upstream ghép
+    # ${REPOSITORY}-stable-${RELEASE}, còn fork OTSA cắt tại "/" đầu tiên của
+    # tên thư mục vừa giải nén. Giữ nguyên "/" là hỏng cả hai.
+    CORE_BRANCH_DIR=$(echo "${CORE_BRANCH}" | tr '/' '-')
     echo "==> Building ${CORE_REPOSITORY}.tar.gz from /var/vagrant/core (skipping GitHub fetch)"
     tar -C /var/vagrant -cf "${LOCAL_CORE_TARBALL}" \
-        -s "|^core/|${CORE_REPOSITORY}-${CORE_BRANCH}/|" \
-        -s "|^core\$|${CORE_REPOSITORY}-${CORE_BRANCH}|" \
+        -s "|^core/|${CORE_REPOSITORY}-${CORE_BRANCH_DIR}/|" \
+        -s "|^core\$|${CORE_REPOSITORY}-${CORE_BRANCH_DIR}|" \
         core
     tar -tf "${LOCAL_CORE_TARBALL}" >/dev/null
     # Replace both `fetch -o ${WORKDIR}/${REPOSITORY}.tar.gz ...` invocations in

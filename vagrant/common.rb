@@ -20,12 +20,16 @@ def otsa_common(config)
   end
   puts "==> OTSA_MODE = #{$otsa_mode}"
 
+  # Release đích của OPNsense. Khai báo trước $mode_defaults vì nhánh core mặc
+  # định ở mode official bám theo nó (stable/<release>).
+  $opnsense_release = ENV.fetch('OPNSENSE_RELEASE', '26.1')
+
   $mode_defaults = {
     'official' => {
       'OTSA_MIRROR_URL'   => 'https://pkg.opnsense.org',
       'CORE_ACCOUNT'      => 'opnsense',
       'CORE_REPOSITORY'   => 'core',
-      'CORE_BRANCH'       => 'master',
+      'CORE_BRANCH'       => "stable/#{$opnsense_release}",
       'UPDATE_REPOSITORY' => 'update',
       'UPDATE_BRANCH'     => 'master'
     },
@@ -42,7 +46,6 @@ def otsa_common(config)
   # ENV vẫn override được từng giá trị riêng lẻ, mode chỉ quyết định mặc định
   otsa_env = ->(key) { ENV.fetch(key, $mode_defaults[key]) }
 
-  $opnsense_release       = '26.1'
   $virtual_machine_ip     = '192.168.56.56'
   $vagrant_mount_path     = '/var/vagrant'
   $otsa_mirror_url        = otsa_env.call('OTSA_MIRROR_URL')
