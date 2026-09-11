@@ -11,6 +11,11 @@ set -e
 : "${OPNSENSE_RELEASE:?OPNSENSE_RELEASE must be set}"
 : "${VIRTUAL_MACHINE_IP:?VIRTUAL_MACHINE_IP must be set}"
 
+# Deployment mode: 'official' (upstream OPNsense) or 'custom' (internal repos +
+# mirror). Only decides whether the internal-mirror static route is injected
+# below; everything else is already resolved into the variables above.
+OTSA_MODE="${OTSA_MODE:-official}"
+
 # Download the OPNsense bootstrap script from the update repo
 fetch -o opnsense-bootstrap.sh "${BOOTSTRAP_SCRIPT_URL}"
 
@@ -88,12 +93,18 @@ sed -i '' -e 's/mismatch1/vtnet2/' /usr/local/etc/config.xml
 # usable for `vagrant ssh` once WAN is moved off vtnet0.
 sed -i '' -e '/<\/lan>/r files/opt_mgmt.xml' /usr/local/etc/config.xml
 
-# Register a dynamic gateway on MGMT and a static route for 192.168.150.0/24
-# (OTSA mirror) so it traverses the host instead of the WAN bridge.
-# Replaces the trailing </opnsense> with the snippet (which itself ends in
-# </opnsense>) — host_route.xml therefore must be the LAST appended file.
+# Register a dynamic gateway on MGMT (always) plus, in custom mode, a static
+# route for 192.168.150.0/24 so the OTSA mirror traverses the host instead of
+# the WAN bridge. The mirror only exists in custom mode — in official mode
+# packages come from pkg.opnsense.org over the WAN, so the route is omitted.
+# The closing </opnsense> is dropped first and re-appended from files/close.xml,
+# which must therefore stay the LAST appended fragment.
 sed -i '' -e '/<\/opnsense>/d' /usr/local/etc/config.xml
-cat files/host_route.xml >>/usr/local/etc/config.xml
+cat files/mgmt_gw.xml >>/usr/local/etc/config.xml
+if [ "${OTSA_MODE}" = "custom" ]; then
+    cat files/mirror_route.xml >>/usr/local/etc/config.xml
+fi
+cat files/close.xml >>/usr/local/etc/config.xml
 
 # Remove IPv6 configuration from WAN
 sed -i '' -e '/<ipaddrv6>dhcp6<\/ipaddrv6>/d' /usr/local/etc/config.xml

@@ -1,24 +1,20 @@
-# OT-SA Vagrantfile — VirtualBox provider
+# OT-SA — configuration shared by every provider.
 #
-# Use:  OTSA_PROVIDER=virtualbox vagrant up
-#       VAGRANT_VAGRANTFILE=Vagrantfile.virtualbox vagrant up --provider=virtualbox
+# Provider-specific pieces (the config.vm.provider block, the bridged-WAN
+# syntax, disk resizing) live in vagrant/<provider>.rb and are reached through
+# otsa_provider_config / otsa_wan_network, which the entry-point Vagrantfile
+# has already loaded by the time this runs.
 #
-# Requires:
-#       - VirtualBox >= 7.0.4
-#       - vagrant plugin install vagrant-disksize  (for disk resizing below)
-#
-# Note: FreeBSD guest does NOT support vboxsf — synced folders must use NFS or rsync.
-# This file uses NFS to keep edits live-mirrored (same as libvirt variant). NFS over
-# VirtualBox requires a host NFS server and may prompt for sudo on `vagrant up`.
+# All relative paths below resolve against the directory holding the
+# Vagrantfile (the repository root), not this file.
 
-Vagrant.configure(2) do |config|
-
+def otsa_common(config)
   #
   # General settings
   #
 
   # Mode: 'official' => repo chuẩn của OPNsense, 'custom' => repo nội bộ của bạn
-  $otsa_mode = ENV.fetch('OTSA_MODE', 'custom').downcase
+  $otsa_mode = ENV.fetch('OTSA_MODE', 'official').downcase
   unless %w[official custom].include?($otsa_mode)
     raise "OTSA_MODE phải là 'official' hoặc 'custom' (nhận được: '#{$otsa_mode}')"
   end
@@ -70,8 +66,9 @@ Vagrant.configure(2) do |config|
     "https://raw.githubusercontent.com/#{$core_account}/#{$update_repository}/#{$update_branch}/src/bootstrap/opnsense-bootstrap.sh.in"
   )
 
-  # Auto-clone core repository if it doesn't exist on the host
-  core_dir = File.expand_path("../#{$core_repository}", __dir__)
+  # Auto-clone core repository if it doesn't exist on the host.
+  # __dir__ is vagrant/, so the sibling of the repository root is two levels up.
+  core_dir = File.expand_path("../../#{$core_repository}", __dir__)
   if File.directory?(core_dir)
     puts "==> Found existing #{$core_repository} repository at #{core_dir}"
   else
@@ -86,6 +83,8 @@ Vagrant.configure(2) do |config|
 
   # Disable the default /vagrant share; mount our own via NFS.
   # (vboxsf doesn't work on FreeBSD; rsync wouldn't reflect host edits live.)
+  # NFS over VirtualBox requires a host NFS server and may prompt for sudo on
+  # `vagrant up`.
   config.vm.synced_folder '.', '/vagrant', id: 'vagrant-root', disabled: true
   config.vm.synced_folder '.', "#{$vagrant_mount_path}", type: 'nfs', nfs_udp: false
   config.vm.synced_folder "../#{$core_repository}", "#{$vagrant_mount_path}/core", type: 'nfs', nfs_udp: false
@@ -105,43 +104,21 @@ Vagrant.configure(2) do |config|
 
   #
   # Network — LAN (static), WAN (bridge), OPT (dhcp), OPT (dhcp)
-  # VirtualBox auto-attaches its NAT adapter as the first NIC (vtnet0) for `vagrant ssh`;
+  #
+  # Declaration order IS the guest interface order, and bootstrap.sh hardcodes
+  # that mapping (vtnet1=LAN, vtnet2=WAN, vtnet3/4=OPT). Do not reorder.
+  # Both providers attach their own management NAT ahead of these as vtnet0;
   # bootstrap.sh wires it into OPNsense as OPT1 "MGMT".
-  # LAN uses host-only network 192.168.56.0/21 — avoid 192.168.56.1 which VirtualBox reserves for the host.
   #
   config.vm.network 'private_network', ip: $virtual_machine_ip, auto_config: false
-  if $wan_bridge_dev.empty?
-    config.vm.network 'public_network'
-  else
-    config.vm.network 'public_network', bridge: $wan_bridge_dev
-  end
+  otsa_wan_network(config, $wan_bridge_dev)
   config.vm.network 'private_network', type: 'dhcp'
   config.vm.network 'private_network', type: 'dhcp'
 
   #
-  # VirtualBox provider configuration
+  # Provider-specific configuration (vagrant/<provider>.rb)
   #
-  config.vm.provider :virtualbox do |vb|
-    vb.memory = 8192
-    vb.cpus   = 16
-
-    # Force virtio NICs so guest interface names match those expected by bootstrap.sh
-    # (sed targets vtnet0/vtnet1). VirtualBox default Intel e1000 would name them em0/em1.
-    vb.customize ['modifyvm', :id, '--nictype1', 'virtio']
-    vb.customize ['modifyvm', :id, '--nictype2', 'virtio']
-    vb.customize ['modifyvm', :id, '--nictype3', 'virtio']
-    vb.customize ['modifyvm', :id, '--nictype4', 'virtio']
-    vb.customize ['modifyvm', :id, '--nictype5', 'virtio']
-  end
-
-  # Disk size (requires the vagrant-disksize plugin).
-  # Skipped silently if the plugin isn't installed so `vagrant up` doesn't hard-fail.
-  if Vagrant.has_plugin?('vagrant-disksize')
-    config.disksize.size = '64GB'
-  else
-    puts "==> WARN: vagrant-disksize plugin not installed — VM disk will use box default."
-    puts "    Install with: vagrant plugin install vagrant-disksize"
-  end
+  otsa_provider_config(config)
 
   #
   # Bootstrap OPNsense
@@ -149,6 +126,7 @@ Vagrant.configure(2) do |config|
   config.vm.provision "file",  source: "files", destination: "files"
 
   config.vm.provision "shell", env: {
+    "OTSA_MODE"            => $otsa_mode,
     "OTSA_MIRROR_URL"      => $otsa_mirror_url,
     "OPNSENSE_RELEASE"     => $opnsense_release,
     "VIRTUAL_MACHINE_IP"   => $virtual_machine_ip,
@@ -156,7 +134,6 @@ Vagrant.configure(2) do |config|
     "CORE_REPOSITORY"      => $core_repository,
     "CORE_BRANCH"          => $core_branch,
     "BOOTSTRAP_SCRIPT_URL" => $bootstrap_script_url,
-    "OPNSENSE_PIN_VERSION" => $opnsense_pin_version,
-    "OTSA_WAN_BRIDGE"      => $wan_bridge_dev
+    "OPNSENSE_PIN_VERSION" => $opnsense_pin_version
   }, path: "bootstrap.sh"
 end

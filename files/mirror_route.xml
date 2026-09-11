@@ -1,0 +1,8 @@
+  <staticroutes>
+    <route>
+      <descr>OTSA mirror reachable only via host (LAN at office, Wireguard at home)</descr>
+      <disabled>0</disabled>
+      <network>192.168.150.0/24</network>
+      <gateway>MGMT_GW</gateway>
+    </route>
+  </staticroutes>
